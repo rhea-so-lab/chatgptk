@@ -1,15 +1,17 @@
 {
-  "name": "chatgpt-cli",
-  "version": "1.0.0",
-  "main": "index.js",
-  "repository": "git@github.com:rhea-so/chatgpt-cli.git",
+  "name": "chatgptk",
+  "version": "1.0.5",
   "author": "rhea-so <jeonghyeon.rhea@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "ts-node src/index.ts",
     "build": "tsc"
   },
+  "bin": {
+    "chatgptk": "./dist/index.js"
+  },
   "dependencies": {
+    "chatgptk": "1.0.0",
     "dotenv": "16.0.3",
     "eventsource-parser": "0.1.0",
     "lru-cache": "8.0.4",

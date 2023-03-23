@@ -1,9 +1,11 @@
+#!/usr/bin/env node
 import { createInterface } from 'readline';
 import { ChatGPT } from './chat-gpt';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { join } from 'path';
 
-dotenv.config();
+dotenv.config({ path: join(__dirname, '..', '.env') });
 let chatGPT: ChatGPT;
 
 if (!process.env.API_KEY) {
@@ -16,7 +18,7 @@ if (!process.env.API_KEY) {
   });
   readline.on('close', async () => {
     console.log('\x1b[90m%s\x1b[0m', 'API key set.\n');
-    fs.writeFileSync('.env', `API_KEY=${process.env.API_KEY}`);
+    fs.writeFileSync(join(__dirname, '..', '.env'), `API_KEY=${process.env.API_KEY}`);
     chatGPT = new ChatGPT(process.env.API_KEY!);
     cycle();
   });
