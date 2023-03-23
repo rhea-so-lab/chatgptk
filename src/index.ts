@@ -40,7 +40,7 @@ function cycle() {
     if (input.length === 0) process.exit(0);
     console.log();
     console.log('\x1b[36m%s\x1b[0m', 'ChatGPT:'); // Cyan
-    await chatGPT.ask(input, (delta) => process.stdout.write(delta));
+    await chatGPT.ask(input);
     console.log('\n');
     cycle();
   });

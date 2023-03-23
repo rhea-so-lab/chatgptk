@@ -1,19 +1,20 @@
 import { createParser, EventSourceParser } from 'eventsource-parser';
 import { ChatCompletionRequestMessage } from 'openai';
+import axios from 'axios';
 
-function retry(url: string, ms: number, options: RequestInit): Promise<any> {
+function retry(url: string, ms: number, options: any): Promise<any> {
   return new Promise(async (resolve, reject) => {
-    const controller = new AbortController();
-    const signal = controller.signal;
+    const CancelToken = axios.CancelToken;
+    const source = CancelToken.source();
 
     const timer = setTimeout(() => {
       console.log('\x1b[90m%s\x1b[0m', 'retry...');
-      controller.abort();
+      source.cancel();
       retry(url, ms, options).then(resolve, reject);
     }, ms);
 
     try {
-      const result = await fetch(url, { ...options, signal });
+      const result = await axios.request({ ...options, url, method: 'POST', responseType: 'stream', cancelToken: source.token });
       clearTimeout(timer);
       resolve(result);
     } catch (err) {
@@ -22,32 +23,43 @@ function retry(url: string, ms: number, options: RequestInit): Promise<any> {
   });
 }
 
-// streamAsyncIterable is a helper function to convert a ReadableStream to an async iterable
-async function* streamAsyncIterable(stream: any) {
-  const reader = stream.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) return;
-      yield value;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
 // fetchSSE is a helper function to fetch a Server-Sent Event stream
-async function fetchSSE(url: string, options: RequestInit, onMessage: (data: any) => void): Promise<void> {
-  const res: Response = await retry(url, 1000, options);
-  if (!res.ok) throw new Error(`fetchSSE error ${res.status || res.statusText}`);
+async function fetchSSE(url: string, options: any): Promise<void> {
+  let firstLetter: boolean = false;
   const parser: EventSourceParser = createParser((event) => {
-    if (event.type === 'event') onMessage(event.data);
+    if (event.type === 'event') {
+      const str = event.data;
+
+      if (str.includes('[DONE]')) return;
+
+      const chunk = JSON.parse(str);
+      if (chunk === null) return;
+      if (chunk.choices === null) return;
+      if (chunk.choices.length === 0) return;
+
+      const delta = chunk.choices[0].delta;
+      if (delta === null) return;
+      if (delta.content === undefined) return;
+
+      if (!firstLetter && delta.content.replace(/\n/g, '').replace(/ /g, '').length === 0) return;
+      firstLetter = true;
+
+      process.stdout.write(delta.content);
+    }
   });
-  for await (const chunk of streamAsyncIterable(res.body)) {
-    const str = new TextDecoder().decode(chunk);
-    parser.feed(str);
-  }
-  parser.reset();
+
+  return new Promise(async (resolve, reject) => {
+    const res = await retry(url, 1000, options);
+
+    res.data.on('data', (data: Buffer) => {
+      parser.feed(data.toString());
+    });
+
+    res.data.on('end', () => {
+      parser.reset();
+      resolve();
+    });
+  });
 }
 
 // ChatGPT is a class to interact with OpenAI's GPT-3 API
@@ -79,10 +91,10 @@ export class ChatGPT {
     this.presencePenalty = presencePenalty ?? 0.1;
   }
 
-  async ask(question: string, onDelta?: (delta: string) => void): Promise<void> {
+  async ask(question: string): Promise<void> {
     // this.cache.push({ role: 'user', content: question });
     // const response: string = await this.fetch(this.cache, onDelta);
-    await this.fetch([{ role: 'user', content: question }], onDelta);
+    await this.fetch([{ role: 'user', content: question }]);
     // this.cache.push({
     //   role: 'assistant',
     //   content: await this.fetch([
@@ -91,45 +103,21 @@ export class ChatGPT {
     // });
   }
 
-  private async fetch(messages: ChatCompletionRequestMessage[], onDelta?: (delta: string) => void): Promise<string> {
+  private async fetch(messages: ChatCompletionRequestMessage[]): Promise<string> {
     let response: string = '';
-    let firstLetter: boolean = false;
-    await fetchSSE(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({
-          stream: true,
-          model: this.model,
-          max_tokens: this.maxTokens,
-          temperature: this.temperature,
-          top_p: this.topP,
-          frequency_penalty: this.frequencyPenalty,
-          presence_penalty: this.presencePenalty,
-          messages,
-        }),
-      },
-      (data) => {
-        if (data === '[DONE]') return;
-
-        const chunk = JSON.parse(data);
-        if (chunk === null) return;
-        if (chunk.choices === null) return;
-        if (chunk.choices.length === 0) return;
-
-        const delta = chunk.choices[0].delta;
-        if (delta === null) return;
-        if (delta.content === undefined) return;
-
-        if (!firstLetter && delta.content.replace(/\n/g, '').replace(/ /g, '').length === 0) return;
-        firstLetter = true;
-
-        response += delta.content;
-
-        onDelta && onDelta(delta.content);
-      },
-    );
+    await fetchSSE('https://api.openai.com/v1/chat/completions', {
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}`, Accept: 'text/event-stream' },
+      data: JSON.stringify({
+        stream: true,
+        model: this.model,
+        max_tokens: this.maxTokens,
+        temperature: this.temperature,
+        top_p: this.topP,
+        frequency_penalty: this.frequencyPenalty,
+        presence_penalty: this.presencePenalty,
+        messages,
+      }),
+    });
     return response;
   }
 }
