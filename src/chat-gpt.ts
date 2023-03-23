@@ -1,22 +1,24 @@
 import { createParser, EventSourceParser } from 'eventsource-parser';
 import { ChatCompletionRequestMessage } from 'openai';
 
-// timeout is a helper function to set a timeout for a Promise
-function timeout(ms: number, promise: Promise<any>) {
-  return new Promise((resolve, reject) => {
+function retry(url: string, ms: number, options: RequestInit): Promise<any> {
+  return new Promise(async (resolve, reject) => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const timer = setTimeout(() => {
-      reject(new Error('TIMEOUT'));
+      console.log('\x1b[90m%s\x1b[0m', 'retry...');
+      controller.abort();
+      retry(url, ms, options).then(resolve, reject);
     }, ms);
 
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((reason) => {
-        clearTimeout(timer);
-        reject(reason);
-      });
+    try {
+      const result = await fetch(url, { ...options, signal });
+      clearTimeout(timer);
+      resolve(result);
+    } catch (err) {
+      clearTimeout(timer);
+    }
   });
 }
 
@@ -36,7 +38,7 @@ async function* streamAsyncIterable(stream: any) {
 
 // fetchSSE is a helper function to fetch a Server-Sent Event stream
 async function fetchSSE(url: string, options: RequestInit, onMessage: (data: any) => void): Promise<void> {
-  const res = await fetch(url, options);
+  const res: Response = await retry(url, 1000, options);
   if (!res.ok) throw new Error(`fetchSSE error ${res.status || res.statusText}`);
   const parser: EventSourceParser = createParser((event) => {
     if (event.type === 'event') onMessage(event.data);
@@ -91,6 +93,7 @@ export class ChatGPT {
 
   private async fetch(messages: ChatCompletionRequestMessage[], onDelta?: (delta: string) => void): Promise<string> {
     let response: string = '';
+    let firstLetter: boolean = false;
     await fetchSSE(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -118,6 +121,9 @@ export class ChatGPT {
         const delta = chunk.choices[0].delta;
         if (delta === null) return;
         if (delta.content === undefined) return;
+
+        if (!firstLetter && delta.content.replace(/\n/g, '').replace(/ /g, '').length === 0) return;
+        firstLetter = true;
 
         response += delta.content;
 
