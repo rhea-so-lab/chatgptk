@@ -85,7 +85,7 @@ export class ChatGPT {
     this.apiKey = apiKey;
     this.model = model ?? 'gpt-3.5-turbo';
     this.maxTokens = maxTokens ?? 2048;
-    this.temperature = temperature ?? 0;
+    this.temperature = temperature ?? 0.3;
     this.topP = topP ?? 1;
     this.frequencyPenalty = frequencyPenalty ?? 0.2;
     this.presencePenalty = presencePenalty ?? 0.1;
