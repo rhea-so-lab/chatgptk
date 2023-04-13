@@ -1,5 +1,7 @@
 # ChatGPTK
 
+![Example Usage](https://user-images.githubusercontent.com/25793226/231748370-1e576a66-b0a0-4949-9d15-a5fc4db37b03.gif)
+
 ChatGPTK is a console-based application that allows you to have natural language conversations using OpenAI's GPT-3 model.
 
 <a href="#getting-started">Getting Started</a> •
