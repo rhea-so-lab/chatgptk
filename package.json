@@ -1,7 +1,7 @@
 {
   "name": "chatgptk",
-  "version": "1.0.7",
-  "author": "rhea-so <jeonghyeon.rhea@gmail.com>",
+  "version": "1.0.9",
+  "author": "rhea-so <help@rhea-so.link>",
   "license": "MIT",
   "scripts": {
     "dev": "ts-node src/index.ts",
@@ -11,9 +11,11 @@
     "chatgptk": "./dist/index.js"
   },
   "dependencies": {
+    "@creatrip/env-safe": "0.2.4",
     "chatgptk": "1.0.0",
     "dotenv": "16.0.3",
     "eventsource-parser": "0.1.0",
+    "langchain": "0.0.54",
     "lru-cache": "8.0.4",
     "openai": "3.2.1",
     "prettier": "2.8.5",
