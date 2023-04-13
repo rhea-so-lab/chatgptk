@@ -12,6 +12,12 @@ ChatGPTK is a console-based application that allows you to have natural language
 
 ## Getting Started
 
+### Get OpenAI API Key
+
+From https://platform.openai.com/
+
+### Install and Run
+
 ```
 npm i -g chatgptk
 chatgptk
