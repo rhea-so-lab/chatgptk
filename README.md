@@ -36,7 +36,7 @@ chatgptk
 - [ ] Maintain Context
 - [ ] Custom Setting (ex: temperature)
 - [ ] Custom Prompt
-- [ ] Chat History
+- [x] In-memory context persistence
 
 ### v1.0.0
 
