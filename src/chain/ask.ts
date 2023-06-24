@@ -3,8 +3,7 @@ import { Env } from '../config/env';
 export async function getAskChain() {
   const { OpenAI } = await import('langchain/llms/openai');
   const { CallbackManager } = await import('langchain/callbacks');
-  const { LLMChain } = await import('langchain/chains');
-  const { PromptTemplate } = await import('langchain/prompts');
+  const { ConversationChain } = await import('langchain/chains');
 
   let deltaListener: (token: string) => void;
 
@@ -23,17 +22,12 @@ export async function getAskChain() {
     }),
   });
 
-  const prompt = new PromptTemplate({
-    template: '{input}',
-    inputVariables: ['input'],
-  });
-
-  const chain = new LLMChain({ llm: model, prompt: prompt });
+  const chain = new ConversationChain({ llm: model });
 
   return {
     call: async (input: string, onDelta?: (token: string) => void) => {
       deltaListener = onDelta || (() => {});
-      await chain.run(input);
+      await chain.call({ input });
     },
   };
 }

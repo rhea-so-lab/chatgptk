@@ -17,17 +17,19 @@ export class Terminal {
   public async cycle() {
     const chain = await getAskChain();
 
-    console.log('\x1b[33m%s\x1b[0m', 'You:'); // Yellow
-    const input = await this.getOneLine();
-    if (input.length === 0) process.exit(0);
-    console.log();
+    while (true) {
+      console.log('\x1b[33m%s\x1b[0m', 'You:'); // Yellow
+      const input = await this.getOneLine();
+      if (input.length === 0) break;
+      console.log();
 
-    console.log('\x1b[36m%s\x1b[0m', 'ChatGPT:'); // Cyan
-    await chain.call(input, (token) => process.stdout.write(token));
+      console.log('\x1b[36m%s\x1b[0m', 'ChatGPT:'); // Cyan
+      await chain.call(input, (token) => process.stdout.write(token));
+      console.log();
+      console.log();
+    }
 
-    console.log();
-    console.log();
-    this.cycle();
+    process.exit(0);
   }
 
   public async getOneLine() {
